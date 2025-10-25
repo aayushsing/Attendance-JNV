@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JNV Attendance App — Classwise (6–12) Sections A/B</title>
+  <style>
+    /* Reset + base */
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#9aa6b2; --accent:#7dd3fc; --good: #10b981; --bad:#ef4444;
+      --glass: rgba(255,255,255,0.04);
+      --radius:16px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#081225 0%, #071026 60%);color:#e6eef6}
+    a{color:var(--accent)}
+
+    /* App layout */
+    .app{max-width:1100px;margin:28px auto;padding:20px;display:grid;grid-template-columns:320px 1fr;gap:20px}
+
+    /* Sidebar */
+    .sidebar{background:linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:18px;border-radius:var(--radius);backdrop-filter: blur(6px);box-shadow: 0 10px 30px rgba(2,6,23,0.6);height:calc(100vh - 76px);overflow:auto}
+    .logo{display:flex;align-items:center;gap:12px}
+    .logo .circle{width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#60a5fa);display:flex;align-items:center;justify-content:center;font-weight:700;color:#04263a;box-shadow:0 6px 18px rgba(96,165,250,0.15);transform: translateZ(30px) rotateX(12deg)}
+    .logo h1{font-size:18px;margin:0}
+    .muted{color:var(--muted);font-size:13px}
+
+    .controls{margin-top:18px;display:grid;gap:8px}
+    label{font-size:13px;color:var(--muted)}
+    select,input[type="date"],input[type="time"]{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+    .btn{cursor:pointer;padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent),#60a5fa);color:#04263a;font-weight:600}
+    .small{padding:8px 10px;font-size:13px}
+    .row{display:flex;gap:8px}
+
+    /* Main area */
+    .main{padding:18px;border-radius:var(--radius);background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow: 0 8px 30px rgba(2,6,23,0.6);min-height:420px}
+    .controls-top{display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .controls-top .left{display:flex;gap:12px;align-items:center}
+
+    /* 3D card for table */
+    .card-3d{perspective:1200px}
+    .card-inner{transform-style:preserve-3d;transition:transform .45s;transform: rotateX(6deg) translateZ(0)}
+
+    /* Table */
+    table{width:100%;border-collapse:collapse;margin-top:14px}
+    thead th{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:left;font-size:13px}
+    tbody td{padding:12px;border-bottom:1px dashed rgba(255,255,255,0.03);font-size:14px}
+    .roll{width:64px;color:var(--muted)}
+    .status-toggle{display:inline-flex;gap:8px;align-items:center}
+    .chip{padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.04);cursor:pointer}
+    .chip.present{background:rgba(16,185,129,0.12);color:var(--good);border-color:rgba(16,185,129,0.2)}
+    .chip.absent{background:rgba(239,68,68,0.08);color:var(--bad);border-color:rgba(239,68,68,0.15)}
+
+    /* percent indicator */
+    .percent{font-weight:700;padding:8px 10px;border-radius:10px}
+    .percent.good{background:rgba(16,185,129,0.08);color:var(--good)}
+    .percent.bad{background:rgba(239,68,68,0.08);color:var(--bad)}
+
+    /* footer */
+    .footer{margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+
+    /* responsive */
+    @media (max-width:880px){.app{grid-template-columns:1fr;padding:14px}.sidebar{height:auto;order:2}.main{order:1}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="circle">JNV</div>
+        <div>
+          <h1>JNV Attendance</h1>
+          <div class="muted">Classwise | Sections A &amp; B — Offline (Local)</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div>
+          <label for="class-select">Select Class &amp; Section</label>
+          <select id="class-select"></select>
+        </div>
+         <div style="margin-top:14px;border-top:1px dashed rgba(255,255,255,0.03);padding-top:10px">
+  <div class="muted">Add Student</div>
+  <div style="display:flex;gap:6px;margin-top:8px">
+    <input type="text" id="new-student-name" placeholder="Student Name" style="flex:1;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit" />
+    <button class="btn small" id="add-student-btn">Add</button>
+  </div>
+</div>
+
+        <div class="row">
+          <div style="flex:1">
+            <label for="date">Date</label>
+            <input id="date" type="date" />
+          </div>
+          <div style="width:120px">
+            <label for="time">Time</label>
+            <input id="time" type="time" />
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn" id="load-btn">Load Attendance</button>
+          <button class="btn small" id="save-btn">Save</button>
+        </div>
+
+        <div style="margin-top:10px;border-top:1px dashed rgba(255,255,255,0.03);padding-top:10px">
+          <div class="muted">Actions</div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="btn small" id="mark-all-p">Mark All Present</button>
+            <button class="btn small" id="mark-all-a">Mark All Absent</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="btn small" id="export-btn">Download Excel (CSV)</button>
+            <button class="btn small" id="reset-btn" title="Reset all stored attendance">Reset Data</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <div class="muted">Legend</div>
+          <div style="display:flex;gap:10px;margin-top:8px;align-items:center">
+            <div class="chip present">Present</div>
+            <div class="chip absent">Absent</div>
+          </div>
+        </div>
+
+        <div style="margin-top:18px;font-size:13px;color:var(--muted)">
+          Data stored in your browser's local storage and will persist unless you reset or clear site data. Designed for offline/mobile and desktop use.
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="controls-top">
+        <div class="left">
+          <div style="font-size:16px;font-weight:700" id="heading">Class 6 - Section A</div>
+          <div style="margin-left:8px;color:var(--muted);font-size:13px" id="subheading">Date: — | Students: —</div>
+        </div>
+        <div class="right">
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="muted">Selected Time:</div>
+            <div id="selected-time" style="font-weight:700">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-3d" style="margin-top:12px">
+        <div class="card-inner">
+          <table id="students-table" aria-live="polite">
+            <thead>
+              <tr>
+                <th class="roll">Roll</th>
+                <th>Name</th>
+                <th>Attendance</th>
+                <th>Percentage</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="muted" id="last-saved">Last saved: —</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn small" id="save2-btn">Save</button>
+          <button class="btn small" id="export2-btn">Download Excel (CSV)</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    /* ----------------- Data model and persistence ----------------- */
+    const CLASSES = [6,7,8,9,10,11,12];
+    const SECTIONS = ['A','B'];
+    const STORAGE_KEY = 'jnv_attendance_v1';
+
+    // Initialize or load store
+    function loadStore(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw){
+        const store = {};
+        CLASSES.forEach(cls=>{
+          SECTIONS.forEach(sec=>{
+            const key = keyFor(cls,sec);
+            store[key] = {students: defaultStudents(cls), records: {}};
+          });
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+        return store;
+      }
+      try{ return JSON.parse(raw); }catch(e){ console.error('corrupt store, resetting',e); localStorage.removeItem(STORAGE_KEY); return loadStore(); }
+    }
+
+    function saveStore(store){ localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); }
+
+    function keyFor(cls,sec){ return `C${cls}${sec}` }
+
+    function defaultStudents(cls){
+  // Start with empty class; no default students
+  return [];
+}
+
+
+    // Utility: date ISO
+    function dateISOFromInput(d){ if(!d) return null; const dt = new Date(d); const y=dt.getFullYear(); const m=(dt.getMonth()+1).toString().padStart(2,'0'); const day=dt.getDate().toString().padStart(2,'0'); return `${y}-${m}-${day}` }
+
+    /* ----------------- UI wiring ----------------- */
+    const classSelect = document.getElementById('class-select');
+    const dateInput = document.getElementById('date');
+    const timeInput = document.getElementById('time');
+    const loadBtn = document.getElementById('load-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const save2Btn = document.getElementById('save2-btn');
+    const exportBtn = document.getElementById('export-btn');
+    const export2Btn = document.getElementById('export2-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const markAllP = document.getElementById('mark-all-p');
+    const markAllA = document.getElementById('mark-all-a');
+
+    const heading = document.getElementById('heading');
+    const subheading = document.getElementById('subheading');
+    const selectedTime = document.getElementById('selected-time');
+    const lastSaved = document.getElementById('last-saved');
+    const tbody = document.querySelector('#students-table tbody');
+
+    let store = loadStore();
+
+    // Populate class select
+    function populateClassSelect(){
+      classSelect.innerHTML = '';
+      CLASSES.forEach(cls=>{
+        SECTIONS.forEach(sec=>{
+          const opt = document.createElement('option');
+          opt.value = `${cls}-${sec}`;
+          opt.textContent = `Class ${cls} — Section ${sec}`;
+          classSelect.appendChild(opt);
+        });
+      });
+    }
+
+    populateClassSelect();
+
+    // default date to today
+    const today = new Date().toISOString().slice(0,10);
+    dateInput.value = today;
+    timeInput.value = new Date().toTimeString().slice(0,5);
+
+    function currentKey(){ const [cls,sec] = classSelect.value.split('-'); return keyFor(cls,sec) }
+
+    // Load attendance for selected class & date
+    function loadAttendance(){
+      const key = currentKey();
+      const storeEntry = store[key];
+      const dateISO = dateISOFromInput(dateInput.value);
+      if(!dateISO){ alert('Please pick a date'); return; }
+      heading.textContent = `${classSelect.options[classSelect.selectedIndex].text}`;
+      selectedTime.textContent = timeInput.value || '—';
+
+      // build rows
+      tbody.innerHTML = '';
+      const students = storeEntry.students;
+      students.forEach(s => {
+        const tr = document.createElement('tr');
+        const tdRoll = document.createElement('td'); tdRoll.className='roll'; tdRoll.textContent = s.roll;
+        const tdName = document.createElement('td'); tdName.textContent = s.name;
+        const tdStatus = document.createElement('td');
+        const tdPercent = document.createElement('td');
+
+        // current status for date (default present)
+        const statusForDate = (storeEntry.records[dateISO] && storeEntry.records[dateISO][s.roll]) || 'P';
+
+        const chipP = document.createElement('div'); chipP.className='chip present'; chipP.textContent='P';
+        const chipA = document.createElement('div'); chipA.className='chip absent'; chipA.textContent='A';
+
+        function updateActive(status){
+          if(status==='P'){ chipP.style.border='2px solid rgba(16,185,129,0.6)'; chipA.style.border='1px solid rgba(255,255,255,0.04)'; }
+          else { chipA.style.border='2px solid rgba(239,68,68,0.6)'; chipP.style.border='1px solid rgba(255,255,255,0.04)'; }
+        }
+        updateActive(statusForDate);
+
+        chipP.addEventListener('click',()=>{ setStatus(s.roll,'P'); updateActive('P'); renderPercent(); });
+        chipA.addEventListener('click',()=>{ setStatus(s.roll,'A'); updateActive('A'); renderPercent(); });
+
+        tdStatus.appendChild(chipP); tdStatus.appendChild(chipA);
+
+        // percent element
+        const perc = percentForStudent(storeEntry, s.roll);
+        tdPercent.innerHTML = `<div class='percent ${perc < 79 ? 'bad' : 'good'}'>${perc.toFixed(1)}%</div>`;
+
+        tr.appendChild(tdRoll); tr.appendChild(tdName); tr.appendChild(tdStatus); tr.appendChild(tdPercent);
+        tbody.appendChild(tr);
+      });
+
+      subheading.textContent = `Date: ${dateISO} | Students: ${students.length}`;
+      lastSaved.textContent = `Last saved: —`;
+    }
+
+    // Set status in memory (not auto-saved until Save clicked)
+    function setStatus(roll, status){
+      const key = currentKey();
+      const dateISO = dateISOFromInput(dateInput.value);
+      if(!dateISO) return;
+      const entry = store[key];
+      if(!entry.records[dateISO]) entry.records[dateISO] = {};
+      entry.records[dateISO][roll] = status;
+    }
+
+    function percentForStudent(entry, roll){
+      const records = entry.records;
+      const dates = Object.keys(records);
+      if(dates.length===0) return 100.0;
+      let total=0, present=0;
+      dates.forEach(d=>{
+        const st = records[d][roll] || 'P';
+        total++;
+        if(st==='P') present++;
+      });
+      return total===0 ? 100 : (present/total)*100;
+    }
+
+    // Render percent column after changes
+    function renderPercent(){
+      const key = currentKey();
+      const entry = store[key];
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const students = entry.students;
+      rows.forEach((tr, i)=>{
+        const roll = students[i].roll;
+        const percent = percentForStudent(entry, roll);
+        const cell = tr.children[3];
+        cell.innerHTML = `<div class='percent ${percent < 79 ? 'bad' : 'good'}'>${percent.toFixed(1)}%</div>`;
+      });
+    }
+
+    // Save to localStorage
+    function saveNow(){
+      saveStore(store);
+      lastSaved.textContent = `Last saved: ${new Date().toLocaleString()}`;
+      alert('Attendance saved locally in browser.');
+    }
+
+    // Mark all present/absent for current date
+    function markAll(status){
+      const key = currentKey();
+      const dateISO = dateISOFromInput(dateInput.value);
+      if(!dateISO){ alert('Pick a date'); return; }
+      const entry = store[key];
+      if(!entry.records[dateISO]) entry.records[dateISO] = {};
+      entry.students.forEach(s => { entry.records[dateISO][s.roll] = status; });
+      loadAttendance();
+    }
+
+    // Export CSV (class-wise). Produces CSV with columns: roll,name,date,status
+    function exportCSV(){
+      const key = currentKey();
+      const entry = store[key];
+      // gather rows
+      const dates = Object.keys(entry.records).sort();
+      if(dates.length===0){ alert('No attendance records for this class/section to export.'); return; }
+      let rows = [['Roll','Name','Date','Status']];
+      dates.forEach(d=>{
+        entry.students.forEach(s=>{
+          const st = entry.records[d][s.roll] || 'P';
+          rows.push([s.roll, s.name, d, st]);
+        });
+      });
+      const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${classSelect.value.replace('-','_')}_attendance.csv`;
+      document.body.appendChild(link); link.click(); link.remove();
+    }
+
+    // Reset entire stored data
+    function resetAll(){ if(!confirm('This will erase all attendance data from this browser for this application. Continue?')) return; localStorage.removeItem(STORAGE_KEY); store = loadStore(); alert('Data reset.'); loadAttendance(); }
+
+    // Event listeners
+    loadBtn.addEventListener('click', loadAttendance);
+    classSelect.addEventListener('change', loadAttendance);
+    dateInput.addEventListener('change', loadAttendance);
+    timeInput.addEventListener('change', ()=> selectedTime.textContent = timeInput.value);
+    saveBtn.addEventListener('click', saveNow);
+    save2Btn.addEventListener('click', saveNow);
+    exportBtn.addEventListener('click', exportCSV);
+    export2Btn.addEventListener('click', exportCSV);
+    resetBtn.addEventListener('click', resetAll);
+    markAllP.addEventListener('click', ()=>{ markAll('P'); });
+    markAllA.addEventListener('click', ()=>{ markAll('A'); });
+    const addStudentBtn = document.getElementById('add-student-btn');
+const newStudentNameInput = document.getElementById('new-student-name');
+
+addStudentBtn.addEventListener('click', ()=>{
+  const name = newStudentNameInput.value.trim();
+  if(!name){ alert('Enter a student name'); return; }
+
+  const key = currentKey();
+  const entry = store[key];
+  const nextRoll = entry.students.length + 1;
+
+  entry.students.push({roll: nextRoll, name});
+  newStudentNameInput.value = '';
+  saveStore(store);   // save immediately
+  loadAttendance();   // refresh table
+  alert(`Student "${name}" added with Roll No ${nextRoll} in ${classSelect.value}`);
+});
+
+    // On first load, select first option and load
+    setTimeout(()=>{ classSelect.selectedIndex = 0; loadAttendance(); }, 120);
+
+    // Accessibility: keyboard toggle
+    document.addEventListener('keydown', (e)=>{
+      if(e.key==='s' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); saveNow(); }
+    });
+
+    // Make table rows clickable for quicker toggling
+    tbody.addEventListener('click', (ev)=>{
+      const chip = ev.target.closest('.chip');
+      if(!chip) return;
+      // handled by chip listeners
+    });
+
+    // Make app mobile-friendly: tiny optimization
+    window.addEventListener('resize', ()=>{
+      const inner = document.querySelector('.card-inner');
+      inner.style.transform = window.innerWidth < 600 ? 'rotateX(0) translateZ(0)' : 'rotateX(6deg) translateZ(0)';
+    });
+  </script>
+</body>
+  </html>
+    
