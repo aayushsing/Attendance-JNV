@@ -88,6 +88,17 @@
     <input type="text" id="new-student-name" placeholder="Student Name" style="flex:1;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit" />
     <button class="btn small" id="add-student-btn">Add</button>
   </div>
+  <div style="margin-top:14px;border-top:1px dashed rgba(255,255,255,0.03);padding-top:10px">
+  <div class="muted">Manage Students</div>
+  <div style="display:flex;gap:6px;margin-top:8px">
+    <input type="number" id="manage-roll" placeholder="Roll No" style="width:80px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit" />
+    <input type="text" id="manage-name" placeholder="New Name" style="flex:1;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit" />
+  </div>
+  <div style="display:flex;gap:6px;margin-top:8px">
+    <button class="btn small" id="edit-student-btn">Edit</button>
+    <button class="btn small" id="delete-student-btn" style="background:linear-gradient(90deg,#ef4444,#dc2626);color:white;">Delete</button>
+  </div>
+</div>
 </div>
 
         <div class="row">
@@ -408,6 +419,60 @@ addStudentBtn.addEventListener('click', ()=>{
   saveStore(store);   // save immediately
   loadAttendance();   // refresh table
   alert(`Student "${name}" added with Roll No ${nextRoll} in ${classSelect.value}`);
+});
+const editStudentBtn = document.getElementById('edit-student-btn');
+const deleteStudentBtn = document.getElementById('delete-student-btn');
+const manageRollInput = document.getElementById('manage-roll');
+const manageNameInput = document.getElementById('manage-name');
+
+// 📝 Edit student name or roll number
+editStudentBtn.addEventListener('click', ()=>{
+  const roll = parseInt(manageRollInput.value);
+  const newName = manageNameInput.value.trim();
+
+  if(isNaN(roll)){ alert('Enter a valid roll number'); return; }
+  if(!newName){ alert('Enter a new name'); return; }
+
+  const key = currentKey();
+  const entry = store[key];
+  const student = entry.students.find(s => s.roll === roll);
+  if(!student){ alert(`No student found with Roll No ${roll}`); return; }
+
+  student.name = newName;
+  saveStore(store);
+  loadAttendance();
+  alert(`Updated Roll ${roll} → Name: ${newName}`);
+  manageRollInput.value = '';
+  manageNameInput.value = '';
+});
+
+// ❌ Delete single student
+deleteStudentBtn.addEventListener('click', ()=>{
+  const roll = parseInt(manageRollInput.value);
+  if(isNaN(roll)){ alert('Enter a valid roll number to delete'); return; }
+
+  const key = currentKey();
+  const entry = store[key];
+  const index = entry.students.findIndex(s => s.roll === roll);
+  if(index === -1){ alert(`No student found with Roll No ${roll}`); return; }
+
+  if(!confirm(`Delete student Roll ${roll} (${entry.students[index].name})?`)) return;
+
+  entry.students.splice(index, 1);
+
+  // Reassign roll numbers to keep sequence 1..n
+  entry.students.forEach((s, i) => s.roll = i + 1);
+
+  // Remove attendance data related to deleted roll
+  for (let date in entry.records){
+    delete entry.records[date][roll];
+  }
+
+  saveStore(store);
+  loadAttendance();
+  alert(`Student with Roll ${roll} deleted and roll numbers updated.`);
+  manageRollInput.value = '';
+  manageNameInput.value = '';
 });
 
     // On first load, select first option and load
